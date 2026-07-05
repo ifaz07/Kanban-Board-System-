@@ -4,11 +4,12 @@ node_modules/
 # Build output
 dist/
 build/
+*.tsbuildinfo
 
+# Personal reference files - not meant for the submitted repo
 CLAUDE.md
 PROJECT_PLAN.md
 requirements.txt
-
 
 # Env files
 .env

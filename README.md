@@ -1,8 +1,9 @@
-<<<<<<< HEAD
 # Kanban Board System
 
-Backend API for a Kanban-style task management system, built for the SammTech Ltd. backend
-internship take-home assignment.
+A RESTful Kanban task management API built with NestJS, TypeScript, PostgreSQL, and Prisma,
+for the SammTech Ltd. backend internship take-home assignment. Features JWT authentication,
+role-based access control, task position/reorder logic, soft deletes, validation, and Swagger
+API documentation.
 
 ## Status
 
@@ -15,10 +16,9 @@ Current state:
 - Config module with env var validation (fails fast on boot if `.env` is wrong)
 - Global exception filter, global validation pipe, global rate limiting
 - Swagger bootstrapped at `/api/docs`
-- Docker Compose for local Postgres
+- Auth: register, login, JWT access + rotating refresh tokens, bcrypt password hashing, tighter rate limit on `/auth/login`
 
 **Not done yet**
-- Auth endpoints (register, login, refresh)
 - Boards / Columns / Tasks CRUD + ownership guard
 - Task position/reorder logic
 - Soft delete enforcement, search & filter
@@ -43,7 +43,7 @@ src/
   config/                   env loading + validation
   prisma/                   PrismaService, global PrismaModule
   common/filters/           global exception filter
-  auth/                     JWT auth (register, login, refresh) - in progress
+  auth/                     JWT auth: register, login, refresh
   users/                    user lookups used internally by auth
   boards/                   boards CRUD + ownership
   columns/                  columns CRUD
@@ -58,14 +58,14 @@ in services, so nothing ends up in a single giant file.
 
 ## Setup & running locally
 
-Prerequisites: Node.js 20+, npm 10+, Docker (optional, for local Postgres).
+Prerequisites: Node.js 20+, npm 10+, and a PostgreSQL database (this project uses a free
+[Neon](https://neon.tech) instance for local dev, but any Postgres connection string works).
 
 ```bash
 git clone https://github.com/ifaz07/Kanban-Board-System-.git
 cd Kanban-Board-System-
 npm install                         # also runs `prisma generate` via postinstall
-cp .env.example .env                # then fill in real secrets, see below
-docker compose up -d                # starts local Postgres (skip if using your own DB)
+cp .env.example .env                # fill in DATABASE_URL and secrets, see below
 npx prisma migrate dev --name init  # creates the database tables
 npm run start:dev                   # http://localhost:3000
 ```
@@ -79,7 +79,7 @@ Swagger docs: `http://localhost:3000/api/docs`
 |---|---|---|
 | `NODE_ENV` | `development` | `development` / `production` / `test` |
 | `PORT` | `3000` | API port |
-| `DATABASE_URL` | `postgresql://kanban:kanban@localhost:5432/kanban_db?schema=public` | Matches `docker-compose.yml` by default |
+| `DATABASE_URL` | `postgresql://user:pass@host:5432/dbname?sslmode=require` | Connection string from Neon (or any Postgres provider) - use the direct/non-pooled string for migrations |
 | `JWT_ACCESS_SECRET` | long random string | generate with `openssl rand -base64 48` |
 | `JWT_ACCESS_EXPIRY` | `15m` | access token lifetime |
 | `JWT_REFRESH_SECRET` | long random string, different from access secret | generate separately |
@@ -116,6 +116,14 @@ transparent for a project this size anyway.
 **Auth.** Short-lived access tokens (15 min) plus a refresh token (7 days) hashed with bcrypt
 before it's stored, so a stolen database dump doesn't hand out valid refresh tokens.
 
+**Pinned Prisma to v6, not v7.** The environment this was built in resolved Prisma to v7 by
+default, which turned out to be a much bigger change than a version bump: it requires a separate
+`prisma.config.ts` file, a manually-wired database driver adapter instead of just reading
+`DATABASE_URL`, and a custom (non-`node_modules`) client output path, with ESM implications on
+top. That's a lot of unrelated architecture churn for a 5-day assignment, so `prisma` and
+`@prisma/client` are pinned to `^6.x`, which uses the classic `datasource { url = env(...) }` +
+`new PrismaClient()` pattern - the same pattern almost every Prisma/NestJS guide assumes.
+
 **Global `PrismaModule`.** Marked `@Global()` so every resource module can inject
 `PrismaService` without re-importing it everywhere — small tradeoff of implicit availability
 for a lot less repetition.
@@ -138,7 +146,3 @@ ownership guard — get built.)
 - WebSocket-based live board updates
 - E2E test coverage on top of unit tests
 - A proper activity log UI/endpoint instead of just the underlying table
-=======
-# Kanban-Board-System-
-A RESTful Kanban task management API built with NestJS, TypeScript, PostgreSQL, and Prisma. Features JWT authentication, role-based access control, task management with drag-and-drop ordering logic, soft deletes, validation, and Swagger API documentation.
->>>>>>> 4555e15032997c9f942c78649b21cb2156b179e6
