@@ -17,12 +17,13 @@ Current state:
 - Global exception filter, global validation pipe, global rate limiting
 - Swagger bootstrapped at `/api/docs`
 - Auth: register, login, JWT access + rotating refresh tokens, bcrypt password hashing, tighter rate limit on `/auth/login`
+- Boards: create, list own boards, get one with columns + tasks, soft delete - all behind `BoardOwnerGuard`
+- Columns: create under a board, update (title/order), delete - behind `BoardOwnerGuard` / `ColumnOwnerGuard`
 
 **Not done yet**
-- Boards / Columns / Tasks CRUD + ownership guard
-- Task position/reorder logic
-- Soft delete enforcement, search & filter
-- Tests, deployment, final Swagger annotations on DTOs
+- Tasks CRUD + position/reorder logic
+- Search & filter on tasks
+- Tests, deployment, final Swagger annotations on all DTOs
 
 ## Tech stack
 
@@ -123,6 +124,17 @@ default, which turned out to be a much bigger change than a version bump: it req
 top. That's a lot of unrelated architecture churn for a 5-day assignment, so `prisma` and
 `@prisma/client` are pinned to `^6.x`, which uses the classic `datasource { url = env(...) }` +
 `new PrismaClient()` pattern - the same pattern almost every Prisma/NestJS guide assumes.
+
+**Ownership guards return 404, not just 403, for boards/columns you don't own.** `BoardOwnerGuard`
+and `ColumnOwnerGuard` throw `NotFoundException` if the resource doesn't exist *or* belongs to
+someone else, and only throw `ForbiddenException` once existence is confirmed and ownership is
+the sole failure. This avoids leaking whether a given board ID exists to users who don't own it.
+
+**Columns are hard-deleted, boards are soft-deleted.** The schema hint only gives `Board` and
+`Task` a `deletedAt` field - `Column` doesn't have one - so deleting a column is a real `DELETE`
+that cascades to its tasks via the foreign key. Deleting a board just sets `deletedAt`; its
+columns and tasks are left in place but unreachable, since every read filters `deletedAt: null`
+starting from the board.
 
 **Global `PrismaModule`.** Marked `@Global()` so every resource module can inject
 `PrismaService` without re-importing it everywhere — small tradeoff of implicit availability
