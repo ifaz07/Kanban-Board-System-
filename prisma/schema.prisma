@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  boards        Board[]
+  assignedTasks Task[]         @relation("TaskAssignee")
+  refreshTokens RefreshToken[]
+  activityLogs  ActivityLog[]
+}
+
+model Board {
+  id        String    @id @default(uuid())
+  title     String
+  ownerId   String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  owner   User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  columns Column[]
+
+  @@index([ownerId])
+}
+
+model Column {
+  id        String   @id @default(uuid())
+  title     String
+  order     Int
+  boardId   String
+  createdAt DateTime @default(now())
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([boardId])
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  priority    Priority  @default(MEDIUM)
+  dueDate     DateTime?
+  assigneeId  String?
+  columnId    String
+  position    Int
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  column       Column        @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  labels       TaskLabel[]
+  activityLogs ActivityLog[]
+
+  @@index([columnId])
+  @@index([deletedAt])
+}
+
+model TaskLabel {
+  id     String @id @default(uuid())
+  name   String
+  color  String
+  taskId String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  action    String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+}

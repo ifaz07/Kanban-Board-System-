@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+CLAUDE.md
+PROJECT_PLAN.md
+requirements.txt
+
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Prisma
+prisma/*.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (if using local storage before Cloudinary is wired up)
+uploads/
