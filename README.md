@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Kanban Board System
 
 Backend API for a Kanban-style task management system, built for the SammTech Ltd. backend
@@ -137,3 +138,7 @@ ownership guard — get built.)
 - WebSocket-based live board updates
 - E2E test coverage on top of unit tests
 - A proper activity log UI/endpoint instead of just the underlying table
+=======
+# Kanban-Board-System-
+A RESTful Kanban task management API built with NestJS, TypeScript, PostgreSQL, and Prisma. Features JWT authentication, role-based access control, task management with drag-and-drop ordering logic, soft deletes, validation, and Swagger API documentation.
+>>>>>>> 4555e15032997c9f942c78649b21cb2156b179e6
