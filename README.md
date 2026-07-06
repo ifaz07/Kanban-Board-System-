@@ -19,11 +19,12 @@ Current state:
 - Auth: register, login, JWT access + rotating refresh tokens, bcrypt password hashing, tighter rate limit on `/auth/login`
 - Boards: create, list own boards, get one with columns + tasks, soft delete - all behind `BoardOwnerGuard`
 - Columns: create under a board, update (title/order), delete - behind `BoardOwnerGuard` / `ColumnOwnerGuard`
+- Tasks: create, update (including replacing labels), soft delete, search/filter by title/priority/due date, and the position/reorder + cross-column move logic - behind `ColumnOwnerGuard` / `TaskOwnerGuard`
+- Activity log: a row is written to `ActivityLog` every time a task is moved (bonus item)
 
 **Not done yet**
-- Tasks CRUD + position/reorder logic
-- Search & filter on tasks
 - Tests, deployment, final Swagger annotations on all DTOs
+- File upload for task attachments (lowest-priority bonus item)
 
 ## Tech stack
 
@@ -101,12 +102,26 @@ since every list query filters on it.
 
 ## Technical decisions
 
-**Task position/reordering.** Using gap-based integer positions instead of naive array
-indexing or a linked list. New tasks get `position = lastPosition + 1000`. Moving a task
-between two others sets `position = floor((prevPos + nextPos) / 2)`; if that gap closes to
-zero, the column's positions get rebalanced back to steps of 1000 in one transaction. This
-keeps moves to a single row update and a simple `ORDER BY position` query, at the cost of an
-occasional rebalance pass.
+**Task position/reordering.** Gap-based integer positions instead of naive array indexing or a
+linked list. New tasks get `position = lastPosition + 1000`. `PATCH /tasks/:id/position` takes
+`{ columnId, beforeTaskId?, afterTaskId? }` - both optional, used together to drop a task
+between two neighbors, either alone to drop it at an edge, or neither to append it to the end.
+The new position is computed as the midpoint of its neighbors (or +/- the gap for an edge
+drop); if that collides with an existing position or hits zero, the whole column's positions
+get rebalanced back to clean multiples of 1000 in one transaction, then recomputed once. This
+keeps the common case to a single row update and a plain `ORDER BY position` query, at the
+cost of an occasional rebalance pass. Moving a task also requires owning the *target* column,
+not just the task being moved, so a request can't be crafted to drop a task into someone
+else's board.
+
+**Labels are replaced wholesale on update, not diffed.** `PATCH /tasks/:id` with a `labels`
+array deletes all existing labels for that task and recreates the ones sent. Simpler than
+matching by id/name to add/remove individual labels, and the assignment doesn't call for
+partial label updates.
+
+**Activity log only records moves.** The bonus item is specifically "who moved what and
+when," so `ActivityLog` rows are only written from `PATCH /tasks/:id/position`, not from
+every field edit - that would be a generic audit log, which isn't what was asked for.
 
 **Soft delete.** Boards and tasks use a `deletedAt` timestamp instead of a real `DELETE`.
 Handled explicitly in each service (filter `deletedAt: null` on reads, `update` instead of
