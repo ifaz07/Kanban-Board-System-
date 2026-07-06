@@ -8,8 +8,8 @@ position/reorder logic, soft deletes, and Swagger documentation.
 ## Links
 
 - **GitHub repo:** https://github.com/ifaz07/Kanban-Board-System-
-- **Live API base URL:** _to be added once deployed_
-- **Swagger docs:** `/api/docs` on whichever base URL above is running (local: `http://localhost:3000/api/docs`)
+- **Live API base URL:** https://kanban-board-system.onrender.com
+- **Swagger docs:** https://kanban-board-system.onrender.com/api/docs (local: `http://localhost:3000/api/docs`)
 
 ## What it does
 
