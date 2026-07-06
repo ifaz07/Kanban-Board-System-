@@ -4,6 +4,9 @@
   "description": "Backend API for a Kanban task management system - SammTech backend internship assignment",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "postinstall": "prisma generate",
     "build": "nest build",
@@ -11,7 +14,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "prisma migrate deploy && node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
