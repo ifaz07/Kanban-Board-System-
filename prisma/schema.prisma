@@ -65,10 +65,11 @@ model Task {
   deletedAt   DateTime?
   createdAt   DateTime  @default(now())
 
-  assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  column       Column        @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignee     User?             @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  column       Column            @relation(fields: [columnId], references: [id], onDelete: Cascade)
   labels       TaskLabel[]
   activityLogs ActivityLog[]
+  attachments  TaskAttachment[]
 
   @@index([columnId])
   @@index([deletedAt])
@@ -79,6 +80,18 @@ model TaskLabel {
   name   String
   color  String
   taskId String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model TaskAttachment {
+  id        String   @id @default(uuid())
+  url       String
+  fileName  String
+  taskId    String
+  createdAt DateTime @default(now())
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 

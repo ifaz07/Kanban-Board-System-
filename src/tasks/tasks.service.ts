@@ -1,5 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, Task } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
+import { Prisma, Task, TaskAttachment } from '@prisma/client';
+import { CloudinaryService } from '../common/cloudinary/cloudinary.service';
+import { ColumnForbiddenException, ColumnNotFoundException } from '../common/exceptions/column.exceptions';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
@@ -10,7 +12,10 @@ const POSITION_GAP = 1000;
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
   async create(columnId: string, dto: CreateTaskDto): Promise<Task> {
     const lastTask = await this.prisma.task.findFirst({
@@ -45,8 +50,23 @@ export class TasksService {
           },
         }),
       },
-      include: { labels: true },
+      include: { labels: true, attachments: true },
       orderBy: { position: 'asc' },
+    });
+  }
+
+  async addAttachment(
+    taskId: string,
+    file: Express.Multer.File,
+  ): Promise<TaskAttachment> {
+    const uploadResult = await this.cloudinary.uploadBuffer(file.buffer, `kanban-tasks/${taskId}`);
+
+    return this.prisma.taskAttachment.create({
+      data: {
+        taskId,
+        url: uploadResult.secure_url,
+        fileName: file.originalname,
+      },
     });
   }
 
@@ -73,7 +93,7 @@ export class TasksService {
             ? { create: dto.labels.map((label) => ({ name: label.name, color: label.color })) }
             : undefined,
         },
-        include: { labels: true },
+        include: { labels: true, attachments: true },
       });
     });
   }
@@ -122,11 +142,11 @@ export class TasksService {
     });
 
     if (!column || column.board.deletedAt) {
-      throw new NotFoundException('Target column not found');
+      throw new ColumnNotFoundException('Target column not found');
     }
 
     if (column.board.ownerId !== ownerId) {
-      throw new ForbiddenException('You do not own the target column');
+      throw new ColumnForbiddenException('You do not own the target column');
     }
   }
 

@@ -1,13 +1,8 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedUser } from '../decorators/current-user.decorator';
+import { TaskForbiddenException, TaskNotFoundException } from '../exceptions/task.exceptions';
 import { getRouteParam } from '../utils/get-route-param';
 
 // Guards the :id param as a task id. Ownership lives two hops up: task ->
@@ -26,11 +21,11 @@ export class TaskOwnerGuard implements CanActivate {
     });
 
     if (!task || task.column.board.deletedAt) {
-      throw new NotFoundException('Task not found');
+      throw new TaskNotFoundException();
     }
 
     if (task.column.board.ownerId !== request.user.userId) {
-      throw new ForbiddenException('You do not own this task');
+      throw new TaskForbiddenException();
     }
 
     return true;

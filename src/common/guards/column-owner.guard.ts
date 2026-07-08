@@ -1,13 +1,8 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedUser } from '../decorators/current-user.decorator';
+import { ColumnForbiddenException, ColumnNotFoundException } from '../exceptions/column.exceptions';
 import { getRouteParam } from '../utils/get-route-param';
 
 // Guards the :id param as a column id. Ownership lives on the parent board,
@@ -26,11 +21,11 @@ export class ColumnOwnerGuard implements CanActivate {
     });
 
     if (!column || column.board.deletedAt) {
-      throw new NotFoundException('Column not found');
+      throw new ColumnNotFoundException();
     }
 
     if (column.board.ownerId !== request.user.userId) {
-      throw new ForbiddenException('You do not own this column');
+      throw new ColumnForbiddenException();
     }
 
     return true;

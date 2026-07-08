@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Board } from '@prisma/client';
+import { BoardNotFoundException } from '../common/exceptions/board.exceptions';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 
@@ -28,7 +29,7 @@ export class BoardsService {
             tasks: {
               where: { deletedAt: null },
               orderBy: { position: 'asc' },
-              include: { labels: true },
+              include: { labels: true, attachments: true },
             },
           },
         },
@@ -36,7 +37,7 @@ export class BoardsService {
     });
 
     if (!board) {
-      throw new NotFoundException('Board not found');
+      throw new BoardNotFoundException();
     }
 
     return board;

@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
+import { CloudinaryModule } from './common/cloudinary/cloudinary.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
@@ -23,6 +24,7 @@ import { LabelsModule } from './labels/labels.module';
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 20 }]),
     PrismaModule,
+    CloudinaryModule,
     AuthModule,
     UsersModule,
     BoardsModule,

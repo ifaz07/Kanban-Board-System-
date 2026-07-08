@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,9 +10,12 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { AuthenticatedUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { ColumnOwnerGuard } from '../common/guards/column-owner.guard';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -61,5 +65,23 @@ export class TasksController {
   @Patch('tasks/:id/position')
   move(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: MoveTaskDto) {
     return this.tasksService.move(id, dto, user.userId);
+  }
+
+  @UseGuards(TaskOwnerGuard)
+  @Post('tasks/:id/attachments')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  uploadAttachment(@Param('id') taskId: string, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    return this.tasksService.addAttachment(taskId, file);
   }
 }

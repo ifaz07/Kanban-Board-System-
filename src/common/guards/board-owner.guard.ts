@@ -1,13 +1,8 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedUser } from '../decorators/current-user.decorator';
+import { BoardForbiddenException, BoardNotFoundException } from '../exceptions/board.exceptions';
 import { getRouteParam } from '../utils/get-route-param';
 
 // Guards the :id param as a board id. Used both on board routes directly and
@@ -25,11 +20,11 @@ export class BoardOwnerGuard implements CanActivate {
     });
 
     if (!board) {
-      throw new NotFoundException('Board not found');
+      throw new BoardNotFoundException();
     }
 
     if (board.ownerId !== request.user.userId) {
-      throw new ForbiddenException('You do not own this board');
+      throw new BoardForbiddenException();
     }
 
     return true;

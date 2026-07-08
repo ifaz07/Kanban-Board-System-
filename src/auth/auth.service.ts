@@ -1,7 +1,12 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import {
+  EmailAlreadyRegisteredException,
+  InvalidCredentialsException,
+  InvalidRefreshTokenException,
+} from '../common/exceptions/auth.exceptions';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -31,7 +36,7 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<TokenPair> {
     const existingUser = await this.usersService.findByEmail(dto.email);
     if (existingUser) {
-      throw new ConflictException('Email is already registered');
+      throw new EmailAlreadyRegisteredException();
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, SALT_ROUNDS);
@@ -49,7 +54,7 @@ export class AuthService {
     const passwordMatches = user ? await bcrypt.compare(dto.password, user.password) : false;
 
     if (!user || !passwordMatches) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new InvalidCredentialsException();
     }
 
     return this.issueTokens(user.id, user.email);
@@ -66,7 +71,7 @@ export class AuthService {
 
     const matchingToken = await this.findMatchingToken(candidates, refreshToken);
     if (!matchingToken) {
-      throw new UnauthorizedException('Refresh token is invalid or has expired');
+      throw new InvalidRefreshTokenException();
     }
 
     // Refresh tokens are single-use: the old one is deleted the moment it's redeemed.

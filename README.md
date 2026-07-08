@@ -22,6 +22,8 @@ position/reorder logic, soft deletes, and Swagger documentation.
 - Search and filter tasks by title, priority, and due date
 - Soft delete on boards and tasks (a `deletedAt` timestamp, not a real row deletion)
 - A basic activity log recording who moved which task and when
+- Attach files to a task (`POST /tasks/:id/attachments`), uploaded straight to Cloudinary from
+  memory - no files ever touch the server's disk
 - Rate limiting on login, input validation on every endpoint, and Swagger docs generated from
   the actual DTOs
 
@@ -32,6 +34,7 @@ position/reorder logic, soft deletes, and Swagger documentation.
 - JWT via Passport, bcrypt for password hashing
 - class-validator / class-transformer for request validation
 - `@nestjs/swagger` for API docs
+- Multer + Cloudinary for task file attachments
 - helmet + CORS + `@nestjs/throttler` for basic hardening
 
 ## Project structure
@@ -99,6 +102,9 @@ again to generate and apply a new migration.
 | `JWT_REFRESH_SECRET` | long random string, **different** from the access secret | So a leaked access secret can't be used to forge refresh tokens |
 | `JWT_REFRESH_EXPIRY` | `7d` | Refresh token lifetime |
 | `CORS_ORIGIN` | `http://localhost:3000` | Allowed frontend origin |
+| `CLOUDINARY_CLOUD_NAME` | from your Cloudinary dashboard | Used to upload task attachments |
+| `CLOUDINARY_API_KEY` | from your Cloudinary dashboard | |
+| `CLOUDINARY_API_SECRET` | from your Cloudinary dashboard | |
 
 All of these are validated on startup - if one is missing or the wrong type, the app fails
 immediately with a clear error instead of failing confusingly later on the first request that
@@ -113,9 +119,9 @@ fully interactive way to try every endpoint (including auth) without leaving the
 ## Database
 
 PostgreSQL via Prisma. Relations: `User → Board → Column → Task`, with `TaskLabel` attached to
-`Task`. I added two models beyond the schema hint in the brief - `RefreshToken` and
-`ActivityLog` - to support the refresh token and activity log bonus items; that's a deliberate
-adjustment, documented here as the brief asks for.
+`Task`. I added three models beyond the schema hint in the brief - `RefreshToken`,
+`ActivityLog`, and `TaskAttachment` - to support the refresh token, activity log, and file
+upload bonus items; that's a deliberate adjustment, documented here as the brief asks for.
 
 Indexes: `Board.ownerId`, `Column.boardId`, `Task.columnId`, and `Task.deletedAt`, since every
 list query filters on these.
@@ -180,11 +186,22 @@ guide assumes.
 `PrismaService` without re-importing it everywhere - a small tradeoff of implicit availability
 in exchange for a lot less repetition across modules.
 
-**Built-in exceptions over hand-rolled custom exception classes.** I used NestJS's own
-`NotFoundException`, `ForbiddenException`, `ConflictException`, etc. rather than writing custom
-subclasses for each case. They give the same meaningful HTTP status codes and clear messages the
-brief asks for, with less code to maintain - though custom classes would be a reasonable next
-step if this grew past a 5-day assignment.
+**Custom exceptions, grouped by resource.** The brief specifically asks for "custom exceptions,"
+so `src/common/exceptions/` has one file per resource (`board.exceptions.ts`,
+`column.exceptions.ts`, `task.exceptions.ts`, `auth.exceptions.ts`), each exporting small classes
+like `BoardNotFoundException` and `BoardForbiddenException` that extend NestJS's own
+`NotFoundException`/`ForbiddenException`/etc. rather than throwing the generic ones inline with a
+string message everywhere. Every guard and service throws these named classes instead. I grouped
+them by resource rather than one file per exception, since each one is only a few lines and a
+folder with 15+ tiny files would be worse for readability than 4 files with 2-3 related classes
+each.
+
+**File attachments upload straight to Cloudinary, never to local disk.** `POST
+/tasks/:id/attachments` uses Multer's in-memory storage (`FileInterceptor` with no `dest`), so
+the file only ever exists as a `Buffer` in memory before it's streamed to Cloudinary via
+`upload_stream`. Only the resulting secure URL and filename are stored in Postgres
+(`TaskAttachment`). This avoids the headache of managing a local uploads folder that wouldn't
+survive a redeploy on Render anyway, since Render's filesystem is ephemeral.
 
 ## Assumptions I made
 
@@ -224,9 +241,6 @@ sure that resolution happens atomically so concurrent moves can't corrupt the or
 
 - Unit tests for the position/reorder logic specifically, since it's the part most likely to
   hide an edge case (empty column, single task, rapid consecutive moves)
-- Custom exception subclasses (e.g. `BoardNotFoundException`) instead of relying on NestJS's
-  built-in `HttpException` subtypes
 - End-to-end tests through Supertest covering the full auth → board → column → task flow
-- File attachments for tasks (Multer + Cloudinary)
 - A proper activity log endpoint/UI instead of just the underlying table
 - WebSocket-based live board updates so multiple people can see moves in real time
